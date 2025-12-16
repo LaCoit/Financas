@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <title>My Finanças (v8)</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        /* ESTILOS GERAIS */
+        :root { --primary: #2c3e50; --accent: #27ae60; --danger: #c0392b; --bg: #f4f7f6; --card: #ffffff; --text: #333; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
+        header { background: var(--primary); color: white; padding: 1rem; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-box { text-align: center; padding: 10px; background: #f8f9fa; border-radius: 8px; }
+        .stat-value { font-weight: bold; font-size: 1.1rem; }
+        .green { color: var(--accent); } .red { color: var(--danger); }
+        input, select, button { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: #555; }
+        button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        button:active { opacity: 0.8; }
+        button.secondary { background: #95a5a6; }
+        .hidden { display: none; }
+        .transaction-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 12px 0; align-items: center; }
+        
+        /* SEGURANÇA DO BOTÃO DE APAGAR */
+        /* Por padrão, o botão de apagar fica invisível */
+        .btn-delete { display: none; background: var(--danger); color: white; border: none; border-radius: 5px; padding: 5px 10px; margin-left: 10px; cursor: pointer; font-size: 0.8rem; }
+        /* Se a lista estiver em 'modo edição', o botão aparece */
+        .edit-mode-active .btn-delete { display: inline-block; }
+
+        nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid #eee; z-index: 99; padding-bottom: 25px; }
+        nav button { background: none; color: #777; width: auto; margin: 0; font-size: 0.75rem; padding: 5px; border: none; }
+        nav button.active { color: var(--primary); transform: scale(1.1); font-weight: bold; }
+        .budget-bar { height: 8px; background: #eee; border-radius: 4px; margin-top: 5px; overflow: hidden; }
+        .budget-fill { height: 100%; background: var(--accent); }
+        .tabs { display: flex; margin-bottom: 15px; border-bottom: 2px solid #eee; }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #777; }
+        .tab.active { border-bottom: 3px solid var(--primary); color: var(--primary); font-weight: bold; }
+        #connection-status { position: fixed; bottom: 0; width: 100%; font-size: 0.75rem; text-align: center; padding: 4px; z-index: 101; color: white; font-weight: bold; }
+        .status-online { background-color: var(--accent); }
+        .status-offline { background-color: var(--danger); }
+        
+        /* Estilo para os interruptores (checkboxes) */
+        .toggles-wrapper { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 10px; }
+        .toggle-container { display: flex; align-items: center; font-size: 0.85rem; color: #555; margin-bottom: 5px; }
+        .toggle-container input { width: auto; margin: 0 8px 0 0; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-size: 1.1rem; font-weight: bold;">Finanças Abel</div>
+    <input type="month" id="monthFilter" style="width: auto; padding: 5px; color: black; margin: 5px 0 0 0;">
+</header>
+
+<div id="loading" style="text-align: center; padding: 30px;">
+    <p>Carregando v8...</p>
+</div>
+
+<div id="view-dashboard" class="container hidden">
+    <div class="card">
+        <div class="summary-grid">
+            <div class="stat-box">Entradas<div class="stat-value green" id="totalIncome">0</div></div>
+            <div class="stat-box">Saídas<div class="stat-value red" id="totalExpense">0</div></div>
+        </div>
+        <div style="text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
+            Saldo Final: <span id="finalBalance" style="font-weight:bold; font-size:1.4rem;">0</span>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h4>Orçamento (Despesas)</h4>
+        <div id="budgetList"></div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <h4 style="margin:0;">Histórico</h4>
+            <div class="toggles-wrapper">
+                <div class="toggle-container">
+                    <input type="checkbox" id="editModeToggle" onchange="renderDashboard()">
+                    <label for="editModeToggle">✏️ Modo Edição (Apagar)</label>
+                </div>
+                <div class="toggle-container">
+                    <input type="checkbox" id="groupByItemToggle" onchange="renderDashboard()">
+                    <label for="groupByItemToggle">📦 Agrupar Itens</label>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:10px;" id="recentTransactionsList"></div>
+    </div>
+</div>
+
+<div id="view-add" class="container hidden">
+    <div class="card">
+        <h3 style="text-align:center; margin-top:0;">Novo Lançamento</h3>
+        <label>Tipo</label>
+        <select id="inputType" onchange="toggleFormType()">
+            <option value="expense">🔴 Despesa</option>
+            <option value="income">🟢 Receita</option>
+        </select>
+
+        <div id="form-expense">
+            <label>Categoria de Despesa</label>
+            <select id="expCategory"><option>Carregando...</option></select>
+            
+            <label>Item (Opcional se igual à categoria)</label>
+            <input type="text" id="expItem" list="historyItems" placeholder="Ex: Café (ou deixe vazio)" autocomplete="off">
+            <datalist id="historyItems"></datalist>
+
+            <div class="summary-grid">
+                <div><label>Qtd</label><input type="number" id="expQty" value="1"></div>
+                <div><label>Preço Unit. (MAD)</label><input type="number" id="expPrice" placeholder="0.00"></div>
+            </div>
+        </div>
+
+        <div id="form-income" class="hidden">
+            <label>Fonte</label><select id="incCategory"><option>Carregando...</option></select>
+            <label>Valor Total (MAD)</label><input type="number" id="incTotal" placeholder="0.00">
+        </div>
+
+        <label>Data</label><input type="date" id="inputDate">
+        <button onclick="saveTransaction()" style="margin-top: 10px;">Salvar</button>
+    </div>
+</div>
+
+<div id="view-settings" class="container hidden">
+    <div class="card">
+        <h3>Categorias</h3>
+        <div class="tabs">
+            <div class="tab active" onclick="switchSettingsTab('expense')" id="tab-expense">Despesas</div>
+            <div class="tab" onclick="switchSettingsTab('income')" id="tab-income">Receitas</div>
+        </div>
+        <div id="settings-expense">
+            <input type="text" id="newCatNameExp" placeholder="Nome Categoria">
+            <input type="number" id="newCatBudget" placeholder="Meta Mensal">
+            <button onclick="saveCategory('expense')">Criar</button>
+            <div id="list-expense-cats" style="margin-top:20px;"></div>
+        </div>
+        <div id="settings-income" class="hidden">
+            <input type="text" id="newCatNameInc" placeholder="Nome Fonte">
+            <button onclick="saveCategory('income')" class="secondary">Criar</button>
+            <div id="list-income-cats" style="margin-top:20px;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="connection-status" class="status-online">Verificando...</div>
+
+<nav>
+    <button onclick="switchView('dashboard')" id="nav-dashboard" class="active">📊 Resumo</button>
+    <button onclick="switchView('add')" id="nav-add">➕ Novo</button>
+    <button onclick="switchView('settings')" id="nav-settings">⚙️ Config</button>
+</nav>
+
+<script>
+    // Registra o novo SW v8
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('SW v8 OK'))
+                .catch(err => console.log('SW Falha', err));
+        });
+    }
+
+    // --- CONFIGURAÇÃO FIREBASE ---
+    // !!! COLE SUAS CHAVES AQUI NOVAMENTE !!!
+    const firebaseConfig = {
+        apiKey: "AIzaSyATkpiODXMz-TaHhqq7pVs9qmMktbcBPcE",
+        authDomain: "financas-abel.firebaseapp.com",
+        projectId: "financas-abel",
+        storageBucket: "financas-abel.firebasestorage.app",
+        messagingSenderId: "760243071362",
+        appId: "1:760243071362:web:d58bc675d1ac3cd56d079b"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    db.enablePersistence({ synchronizeTabs: true }).catch(err => console.log(err));
+
+    let allCategories = [], allTransactions = [];
+
+    function init() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('inputDate').value = today;
+        document.getElementById('monthFilter').value = today.slice(0, 7);
+        document.getElementById('monthFilter').addEventListener('change', renderDashboard);
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+        updateStatus();
+
+        db.collection('categories').onSnapshot({ includeMetadataChanges: true }, snapshot => {
+            allCategories = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            renderSelects(); renderSettingsLists(); renderDashboard();
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('view-dashboard').classList.remove('hidden');
+        });
+
+        db.collection('transactions').onSnapshot({ includeMetadataChanges: true }, snapshot => {
+            allTransactions = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            updateAutocomplete(); 
+            renderDashboard();
+        });
+    }
+
+    function updateStatus() {
+        const d = document.getElementById('connection-status');
+        if(navigator.onLine) { d.innerText = "🟢 Online"; d.className = "status-online"; }
+        else { d.innerText = "🔴 Offline (Modo Avião)"; d.className = "status-offline"; }
+    }
+
+    function updateAutocomplete() {
+        const dataList = document.getElementById('historyItems');
+        dataList.innerHTML = ''; 
+        const uniqueItems = new Set();
+        allTransactions.forEach(t => {
+            if(t.type === 'expense' && t.item) {
+                const cleanName = t.item.charAt(0).toUpperCase() + t.item.slice(1);
+                uniqueItems.add(cleanName);
+            }
+        });
+        uniqueItems.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            dataList.appendChild(option);
+        });
+    }
+
+    function saveCategory(type) {
+        let name, budget = 0;
+        if (type === 'expense') {
+            name = document.getElementById('newCatNameExp').value;
+            budget = parseFloat(document.getElementById('newCatBudget').value) || 0;
+            if(!name) return;
+        } else {
+            name = document.getElementById('newCatNameInc').value;
+            if(!name) return;
+        }
+        db.collection('categories').add({ name, type, budget, createdAt: new Date() });
+        document.getElementById('newCatNameExp').value = '';
+        document.getElementById('newCatNameInc').value = '';
+        document.getElementById('newCatBudget').value = '';
+    }
+
+    function saveTransaction() {
+        const type = document.getElementById('inputType').value;
+        const date = document.getElementById('inputDate').value;
+        let t = { type, date, createdAt: new Date().toISOString() };
+
+        if(type === 'expense') {
+            const catId = document.getElementById('expCategory').value;
+            if(!catId) return alert("Selecione uma categoria");
+
+            let rawItem = document.getElementById('expItem').value.trim();
+            if (!rawItem) {
+                const selectedCat = allCategories.find(c => c.id === catId);
+                if (selectedCat) rawItem = selectedCat.name;
+            }
+
+            t.item = rawItem.charAt(0).toUpperCase() + rawItem.slice(1);
+            t.categoryId = catId;
+            t.qty = parseFloat(document.getElementById('expQty').value) || 1;
+            t.unitPrice = parseFloat(document.getElementById('expPrice').value) || 0;
+            t.total = t.qty * t.unitPrice;
+        } else {
+            t.categoryId = document.getElementById('incCategory').value;
+            t.total = parseFloat(document.getElementById('incTotal').value) || 0;
+            t.qty = 1; t.unitPrice = t.total;
+            const c = allCategories.find(x => x.id === t.categoryId);
+            t.item = c ? c.name : 'Entrada';
+        }
+        
+        if(!t.total) return alert("Preencha o valor");
+        
+        db.collection('transactions').add(t).then(() => {
+            alert(navigator.onLine ? "Salvo!" : "Salvo Offline");
+            switchView('dashboard');
+            document.getElementById('expItem').value = '';
+            document.getElementById('expPrice').value = '';
+            document.getElementById('incTotal').value = '';
+        });
+    }
+
+    function deleteCategory(id) { if(confirm("Apagar categoria?")) db.collection('categories').doc(id).delete(); }
+    
+    function deleteTransaction(id) { 
+        if(confirm("Tem certeza que quer apagar esse lançamento?")) {
+            db.collection('transactions').doc(id).delete();
+        }
+    }
+
+    function renderSelects() {
+        const e = document.getElementById('expCategory'), i = document.getElementById('incCategory');
+        e.innerHTML = i.innerHTML = '<option value="">Selecione...</option>';
+        allCategories.forEach(c => {
+            const o = document.createElement('option'); o.value = c.id; o.innerText = c.name;
+            if(c.type === 'income') i.appendChild(o); else e.appendChild(o);
+        });
+    }
+
+    function renderSettingsLists() {
+        const e = document.getElementById('list-expense-cats'), i = document.getElementById('list-income-cats');
+        e.innerHTML = i.innerHTML = '';
+        allCategories.forEach(c => {
+            const h = `<div class="transaction-item"><span>${c.name}</span><button onclick="deleteCategory('${c.id}')" style="width:auto;padding:5px;background:var(--danger)">X</button></div>`;
+            if(c.type === 'income') i.innerHTML += h; else e.innerHTML += h;
+        });
+    }
+
+    function renderDashboard() {
+        const cur = document.getElementById('monthFilter').value;
+        const tx = allTransactions.filter(t => t.date.startsWith(cur));
+        
+        // Verifica o estado dos interruptores
+        const isGrouped = document.getElementById('groupByItemToggle').checked;
+        const isEditMode = document.getElementById('editModeToggle').checked;
+
+        let inc = 0, exp = 0, catS = {};
+        
+        tx.forEach(t => {
+            if(t.type === 'income') inc += t.total;
+            else { exp += t.total; catS[t.categoryId] = (catS[t.categoryId]||0)+t.total; }
+        });
+        document.getElementById('totalIncome').innerText = formatMoney(inc);
+        document.getElementById('totalExpense').innerText = formatMoney(exp);
+        document.getElementById('finalBalance').innerText = formatMoney(inc-exp);
+        
+        const b = document.getElementById('budgetList'); b.innerHTML = '';
+        allCategories.filter(c => c.type !== 'income').forEach(c => {
+            const s = catS[c.id] || 0;
+            const p = Math.min((s/c.budget)*100, 100);
+            b.innerHTML += `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:0.8rem"><strong>${c.name}</strong><span>${s}/${c.budget}</span></div><div class="budget-bar"><div class="budget-fill" style="width:${p}%;background:${s>c.budget?'red':'#27ae60'}"></div></div></div>`;
+        });
+        
+        const l = document.getElementById('recentTransactionsList'); l.innerHTML = '';
+
+        // Adiciona ou remove a classe que mostra os botões de apagar
+        if (isEditMode) {
+            l.classList.add('edit-mode-active');
+        } else {
+            l.classList.remove('edit-mode-active');
+        }
+
+        if (!isGrouped) {
+            // MODO NORMAL (Com botão de Deletar escondido por padrão)
+            tx.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(t => {
+                l.innerHTML += `
+                    <div class="transaction-item">
+                        <div style="flex:1"><b>${t.item}</b><br><small>${t.date}</small></div>
+                        <div style="display:flex; align-items:center;">
+                            <span style="color:${t.type=='income'?'green':'red'}">${formatMoney(t.total)}</span>
+                            <button class="btn-delete" onclick="deleteTransaction('${t.id}')">X</button>
+                        </div>
+                    </div>`;
+            });
+        } else {
+            // MODO AGRUPADO (Sem botão de Deletar)
+            let groups = {};
+            tx.forEach(t => {
+                let key = t.item.trim().toLowerCase();
+                if(!groups[key]) groups[key] = { name: t.item.trim(), total: 0, count: 0, type: t.type };
+                groups[key].total += t.total;
+                groups[key].count += 1;
+            });
+            Object.values(groups).sort((a,b) => b.total - a.total).forEach(g => {
+                const displayName = g.name.charAt(0).toUpperCase() + g.name.slice(1);
+                l.innerHTML += `<div class="transaction-item"><div><b>${displayName}</b> <small>(x${g.count})</small><br><small style="color:#777">Acumulado</small></div><span style="color:${g.type=='income'?'green':'red'}">${formatMoney(g.total)}</span></div>`;
+            });
+        }
+    }
+
+    function toggleFormType() {
+        const t = document.getElementById('inputType').value;
+        document.getElementById('form-expense').classList.toggle('hidden', t !== 'expense');
+        document.getElementById('form-income').classList.toggle('hidden', t !== 'income');
+    }
+    function switchSettingsTab(t) {
+        document.getElementById('settings-expense').classList.toggle('hidden', t !== 'expense');
+        document.getElementById('settings-income').classList.toggle('hidden', t !== 'income');
+        document.getElementById('tab-expense').classList.toggle('active', t === 'expense');
+        document.getElementById('tab-income').classList.toggle('active', t === 'income');
+    }
+    function switchView(v) {
+        ['dashboard','add','settings'].forEach(x => {
+            document.getElementById('view-'+x).classList.add('hidden');
+            document.getElementById('nav-'+x).classList.remove('active');
+        });
+        document.getElementById('view-'+v).classList.remove('hidden');
+        document.getElementById('nav-'+v).classList.add('active');
+    }
+    function formatMoney(v) { return v.toLocaleString('fr-MA', {style:'currency', currency:'MAD'}); }
+
+    init();
+</script>
+</body>
+</html>
