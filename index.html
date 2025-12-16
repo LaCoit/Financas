@@ -10,13 +10,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2382/2382533.png">
     
-    <title>Finanças PWA (v5)</title>
+    <title>Finanças PWA (v7)</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     
     <style>
-        /* ESTILOS (MANTIDOS) */
+        /* ESTILOS GERAIS */
         :root { --primary: #2c3e50; --accent: #27ae60; --danger: #c0392b; --bg: #f4f7f6; --card: #ffffff; --text: #333; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
         header { background: var(--primary); color: white; padding: 1rem; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -33,6 +33,10 @@
         button.secondary { background: #95a5a6; }
         .hidden { display: none; }
         .transaction-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 12px 0; align-items: center; }
+        
+        /* BOTÃO DE APAGAR (NOVO) */
+        .btn-delete { background: var(--danger); color: white; border: none; border-radius: 5px; padding: 5px 10px; margin-left: 10px; cursor: pointer; font-size: 0.8rem; }
+
         nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid #eee; z-index: 99; padding-bottom: 25px; }
         nav button { background: none; color: #777; width: auto; margin: 0; font-size: 0.75rem; padding: 5px; border: none; }
         nav button.active { color: var(--primary); transform: scale(1.1); font-weight: bold; }
@@ -97,12 +101,13 @@
         </select>
 
         <div id="form-expense">
-            <label>Item (Comece a digitar para ver histórico)</label>
+            <label>Categoria de Despesa</label>
+            <select id="expCategory"><option>Carregando...</option></select>
             
-            <input type="text" id="expItem" list="historyItems" placeholder="Ex: Café" autocomplete="off">
+            <label>Item (Opcional se igual à categoria)</label>
+            <input type="text" id="expItem" list="historyItems" placeholder="Ex: Café (ou deixe vazio)" autocomplete="off">
             <datalist id="historyItems"></datalist>
 
-            <label>Categoria</label><select id="expCategory"><option>Carregando...</option></select>
             <div class="summary-grid">
                 <div><label>Qtd</label><input type="number" id="expQty" value="1"></div>
                 <div><label>Preço (MAD)</label><input type="number" id="expPrice" placeholder="0.00"></div>
@@ -192,7 +197,7 @@
 
         db.collection('transactions').onSnapshot({ includeMetadataChanges: true }, snapshot => {
             allTransactions = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-            updateAutocomplete(); // ATUALIZA A LISTA DE SUGESTÕES
+            updateAutocomplete(); 
             renderDashboard();
         });
     }
@@ -203,22 +208,16 @@
         else { d.innerText = "🔴 Offline (Modo Avião)"; d.className = "status-offline"; }
     }
 
-    // --- FUNÇÃO DE AUTOCOMPLETE ---
     function updateAutocomplete() {
         const dataList = document.getElementById('historyItems');
-        dataList.innerHTML = ''; // Limpa anterior
-        
-        // Pega nomes únicos de despesas
+        dataList.innerHTML = ''; 
         const uniqueItems = new Set();
         allTransactions.forEach(t => {
             if(t.type === 'expense' && t.item) {
-                // Capitaliza a primeira letra para ficar bonito
                 const cleanName = t.item.charAt(0).toUpperCase() + t.item.slice(1);
                 uniqueItems.add(cleanName);
             }
         });
-
-        // Adiciona na lista oculta
         uniqueItems.forEach(item => {
             const option = document.createElement('option');
             option.value = item;
@@ -248,11 +247,17 @@
         let t = { type, date, createdAt: new Date().toISOString() };
 
         if(type === 'expense') {
-            // Força a primeira letra maiúscula para padronizar ao salvar
-            let rawItem = document.getElementById('expItem').value;
+            const catId = document.getElementById('expCategory').value;
+            if(!catId) return alert("Selecione uma categoria");
+
+            let rawItem = document.getElementById('expItem').value.trim();
+            if (!rawItem) {
+                const selectedCat = allCategories.find(c => c.id === catId);
+                if (selectedCat) rawItem = selectedCat.name;
+            }
+
             t.item = rawItem.charAt(0).toUpperCase() + rawItem.slice(1);
-            
-            t.categoryId = document.getElementById('expCategory').value;
+            t.categoryId = catId;
             t.qty = parseFloat(document.getElementById('expQty').value) || 1;
             t.unitPrice = parseFloat(document.getElementById('expPrice').value) || 0;
             t.total = t.qty * t.unitPrice;
@@ -275,7 +280,14 @@
         });
     }
 
-    function deleteCategory(id) { if(confirm("Apagar?")) db.collection('categories').doc(id).delete(); }
+    // --- FUNÇÕES DE DELETAR ---
+    function deleteCategory(id) { if(confirm("Apagar categoria?")) db.collection('categories').doc(id).delete(); }
+    
+    function deleteTransaction(id) { 
+        if(confirm("Tem certeza que quer apagar esse lançamento?")) {
+            db.collection('transactions').doc(id).delete();
+        }
+    }
 
     function renderSelects() {
         const e = document.getElementById('expCategory'), i = document.getElementById('incCategory');
@@ -320,10 +332,19 @@
         const l = document.getElementById('recentTransactionsList'); l.innerHTML = '';
 
         if (!isGrouped) {
+            // MODO LISTA NORMAL (Com botão de Deletar)
             tx.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(t => {
-                l.innerHTML += `<div class="transaction-item"><div><b>${t.item}</b><br><small>${t.date}</small></div><span style="color:${t.type=='income'?'green':'red'}">${t.total} MAD</span></div>`;
+                l.innerHTML += `
+                    <div class="transaction-item">
+                        <div style="flex:1"><b>${t.item}</b><br><small>${t.date}</small></div>
+                        <div style="display:flex; align-items:center;">
+                            <span style="color:${t.type=='income'?'green':'red'}">${t.total} MAD</span>
+                            <button class="btn-delete" onclick="deleteTransaction('${t.id}')">X</button>
+                        </div>
+                    </div>`;
             });
         } else {
+            // MODO AGRUPADO (Sem botão de Deletar, pois é uma soma)
             let groups = {};
             tx.forEach(t => {
                 let key = t.item.trim().toLowerCase();
@@ -332,7 +353,6 @@
                 groups[key].count += 1;
             });
             Object.values(groups).sort((a,b) => b.total - a.total).forEach(g => {
-                // Capitaliza o nome na exibição agrupada
                 const displayName = g.name.charAt(0).toUpperCase() + g.name.slice(1);
                 l.innerHTML += `<div class="transaction-item"><div><b>${displayName}</b> <small>(x${g.count})</small><br><small style="color:#777">Acumulado</small></div><span style="color:${g.type=='income'?'green':'red'}">${formatMoney(g.total)}</span></div>`;
             });
