@@ -10,13 +10,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2382/2382533.png">
     
-    <title>Finanças PWA</title>
+    <title>Finanças PWA (v5)</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     
     <style>
-        /* (MANTIVE O MESMO ESTILO PERFEITO DA VERSÃO ANTERIOR) */
+        /* ESTILOS (MANTIDOS) */
         :root { --primary: #2c3e50; --accent: #27ae60; --danger: #c0392b; --bg: #f4f7f6; --card: #ffffff; --text: #333; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
         header { background: var(--primary); color: white; padding: 1rem; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -44,6 +44,8 @@
         #connection-status { position: fixed; bottom: 0; width: 100%; font-size: 0.75rem; text-align: center; padding: 4px; z-index: 101; color: white; font-weight: bold; }
         .status-online { background-color: var(--accent); }
         .status-offline { background-color: var(--danger); }
+        .toggle-container { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 10px; font-size: 0.9rem; color: #555; }
+        .toggle-container input { width: auto; margin: 0 8px 0 0; }
     </style>
 </head>
 <body>
@@ -67,8 +69,22 @@
             Saldo Final: <span id="finalBalance" style="font-weight:bold; font-size:1.4rem;">0</span>
         </div>
     </div>
-    <div class="card"><h4>Orçamento (Despesas)</h4><div id="budgetList"></div></div>
-    <div class="card"><h4>Histórico Recente</h4><div id="recentTransactionsList"></div></div>
+    
+    <div class="card">
+        <h4>Orçamento (Despesas)</h4>
+        <div id="budgetList"></div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="margin:0;">Histórico</h4>
+            <div class="toggle-container">
+                <input type="checkbox" id="groupByItemToggle" onchange="renderDashboard()">
+                <label for="groupByItemToggle">Agrupar Itens</label>
+            </div>
+        </div>
+        <div style="margin-top:10px;" id="recentTransactionsList"></div>
+    </div>
 </div>
 
 <div id="view-add" class="container hidden">
@@ -81,7 +97,11 @@
         </select>
 
         <div id="form-expense">
-            <label>Item</label><input type="text" id="expItem" placeholder="Ex: Café">
+            <label>Item (Comece a digitar para ver histórico)</label>
+            
+            <input type="text" id="expItem" list="historyItems" placeholder="Ex: Café" autocomplete="off">
+            <datalist id="historyItems"></datalist>
+
             <label>Categoria</label><select id="expCategory"><option>Carregando...</option></select>
             <div class="summary-grid">
                 <div><label>Qtd</label><input type="number" id="expQty" value="1"></div>
@@ -129,16 +149,16 @@
 </nav>
 
 <script>
-    // --- 1. REGISTRAR SERVICE WORKER (ISSO SALVA O HTML OFFLINE) ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Service Worker Registrado!', reg))
-                .catch(err => console.log('Falha no SW:', err));
+                .then(reg => console.log('SW OK'))
+                .catch(err => console.log('SW Falha', err));
         });
     }
 
-    // --- 2. CONFIGURAÇÃO FIREBASE (COLE SUAS CHAVES AQUI) ---
+    // --- CONFIGURAÇÃO FIREBASE ---
+    // !!! COLE SUAS CHAVES AQUI NOVAMENTE !!!
     const firebaseConfig = {
         apiKey: "AIzaSyATkpiODXMz-TaHhqq7pVs9qmMktbcBPcE",
         authDomain: "financas-abel.firebaseapp.com",
@@ -150,11 +170,8 @@
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
-    // Ativar persistência offline do Banco de Dados
     db.enablePersistence({ synchronizeTabs: true }).catch(err => console.log(err));
 
-    // --- LÓGICA DO APP (MANTIDA) ---
     let allCategories = [], allTransactions = [];
 
     function init() {
@@ -175,6 +192,7 @@
 
         db.collection('transactions').onSnapshot({ includeMetadataChanges: true }, snapshot => {
             allTransactions = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            updateAutocomplete(); // ATUALIZA A LISTA DE SUGESTÕES
             renderDashboard();
         });
     }
@@ -185,8 +203,30 @@
         else { d.innerText = "🔴 Offline (Modo Avião)"; d.className = "status-offline"; }
     }
 
+    // --- FUNÇÃO DE AUTOCOMPLETE ---
+    function updateAutocomplete() {
+        const dataList = document.getElementById('historyItems');
+        dataList.innerHTML = ''; // Limpa anterior
+        
+        // Pega nomes únicos de despesas
+        const uniqueItems = new Set();
+        allTransactions.forEach(t => {
+            if(t.type === 'expense' && t.item) {
+                // Capitaliza a primeira letra para ficar bonito
+                const cleanName = t.item.charAt(0).toUpperCase() + t.item.slice(1);
+                uniqueItems.add(cleanName);
+            }
+        });
+
+        // Adiciona na lista oculta
+        uniqueItems.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            dataList.appendChild(option);
+        });
+    }
+
     function saveCategory(type) {
-        // (Lógica de salvar categoria igual a anterior...)
         let name, budget = 0;
         if (type === 'expense') {
             name = document.getElementById('newCatNameExp').value;
@@ -203,13 +243,15 @@
     }
 
     function saveTransaction() {
-        // (Lógica de salvar transação igual a anterior...)
         const type = document.getElementById('inputType').value;
         const date = document.getElementById('inputDate').value;
         let t = { type, date, createdAt: new Date().toISOString() };
 
         if(type === 'expense') {
-            t.item = document.getElementById('expItem').value;
+            // Força a primeira letra maiúscula para padronizar ao salvar
+            let rawItem = document.getElementById('expItem').value;
+            t.item = rawItem.charAt(0).toUpperCase() + rawItem.slice(1);
+            
             t.categoryId = document.getElementById('expCategory').value;
             t.qty = parseFloat(document.getElementById('expQty').value) || 1;
             t.unitPrice = parseFloat(document.getElementById('expPrice').value) || 0;
@@ -225,7 +267,7 @@
         if(!t.total) return alert("Preencha o valor");
         
         db.collection('transactions').add(t).then(() => {
-            alert(navigator.onLine ? "Salvo!" : "Salvo no celular (Offline)");
+            alert(navigator.onLine ? "Salvo!" : "Salvo Offline");
             switchView('dashboard');
             document.getElementById('expItem').value = '';
             document.getElementById('expPrice').value = '';
@@ -235,7 +277,6 @@
 
     function deleteCategory(id) { if(confirm("Apagar?")) db.collection('categories').doc(id).delete(); }
 
-    // RENDERIZACAO
     function renderSelects() {
         const e = document.getElementById('expCategory'), i = document.getElementById('incCategory');
         e.innerHTML = i.innerHTML = '<option value="">Selecione...</option>';
@@ -255,17 +296,19 @@
     }
 
     function renderDashboard() {
-        // (Lógica de dashboard igual a anterior...)
         const cur = document.getElementById('monthFilter').value;
         const tx = allTransactions.filter(t => t.date.startsWith(cur));
+        const isGrouped = document.getElementById('groupByItemToggle').checked;
+
         let inc = 0, exp = 0, catS = {};
+        
         tx.forEach(t => {
             if(t.type === 'income') inc += t.total;
             else { exp += t.total; catS[t.categoryId] = (catS[t.categoryId]||0)+t.total; }
         });
-        document.getElementById('totalIncome').innerText = inc.toLocaleString('fr-MA',{style:'currency',currency:'MAD'});
-        document.getElementById('totalExpense').innerText = exp.toLocaleString('fr-MA',{style:'currency',currency:'MAD'});
-        document.getElementById('finalBalance').innerText = (inc-exp).toLocaleString('fr-MA',{style:'currency',currency:'MAD'});
+        document.getElementById('totalIncome').innerText = formatMoney(inc);
+        document.getElementById('totalExpense').innerText = formatMoney(exp);
+        document.getElementById('finalBalance').innerText = formatMoney(inc-exp);
         
         const b = document.getElementById('budgetList'); b.innerHTML = '';
         allCategories.filter(c => c.type !== 'income').forEach(c => {
@@ -275,9 +318,25 @@
         });
         
         const l = document.getElementById('recentTransactionsList'); l.innerHTML = '';
-        tx.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(t => {
-            l.innerHTML += `<div class="transaction-item"><div><b>${t.item}</b><br><small>${t.date}</small></div><span style="color:${t.type=='income'?'green':'red'}">${t.total} MAD</span></div>`;
-        });
+
+        if (!isGrouped) {
+            tx.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(t => {
+                l.innerHTML += `<div class="transaction-item"><div><b>${t.item}</b><br><small>${t.date}</small></div><span style="color:${t.type=='income'?'green':'red'}">${t.total} MAD</span></div>`;
+            });
+        } else {
+            let groups = {};
+            tx.forEach(t => {
+                let key = t.item.trim().toLowerCase();
+                if(!groups[key]) groups[key] = { name: t.item.trim(), total: 0, count: 0, type: t.type };
+                groups[key].total += t.total;
+                groups[key].count += 1;
+            });
+            Object.values(groups).sort((a,b) => b.total - a.total).forEach(g => {
+                // Capitaliza o nome na exibição agrupada
+                const displayName = g.name.charAt(0).toUpperCase() + g.name.slice(1);
+                l.innerHTML += `<div class="transaction-item"><div><b>${displayName}</b> <small>(x${g.count})</small><br><small style="color:#777">Acumulado</small></div><span style="color:${g.type=='income'?'green':'red'}">${formatMoney(g.total)}</span></div>`;
+            });
+        }
     }
 
     function toggleFormType() {
@@ -299,6 +358,7 @@
         document.getElementById('view-'+v).classList.remove('hidden');
         document.getElementById('nav-'+v).classList.add('active');
     }
+    function formatMoney(v) { return v.toLocaleString('fr-MA', {style:'currency', currency:'MAD'}); }
 
     init();
 </script>
