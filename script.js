@@ -1,11 +1,11 @@
 // --- 1. CONFIGURAÇÃO (COLE SUAS CHAVES AQUI) ---
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY_AQUI",
-    authDomain: "SEU_ID.firebaseapp.com",
-    projectId: "SEU_ID",
-    storageBucket: "SEU_ID.appspot.com",
-    messagingSenderId: "SEU_NUMERO",
-    appId: "SEU_ID"
+    apiKey: "AIzaSyATkpiODXMz-TaHhqq7pVs9qmMktbcBPcE",
+        authDomain: "financas-abel.firebaseapp.com",
+        projectId: "financas-abel",
+        storageBucket: "financas-abel.firebasestorage.app",
+        messagingSenderId: "760243071362",
+        appId: "1:760243071362:web:d58bc675d1ac3cd56d079b"
 };
 
 // Inicializa Firebase
@@ -253,4 +253,5 @@ function forceUpdate() {
         }
         window.location.reload(true);
     }
+
 }
