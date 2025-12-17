@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Finanças</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3498db">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+</head>
+<body>
+
+    <div id="setup-screen">
+        <div class="setup-content">
+            <h2>🔐 Identificação</h2>
+            <p>Entre ou crie sua conta.</p>
+            
+            <div class="setup-form">
+                <label>Seu Nome:</label>
+                <input type="text" id="input-setup-name" placeholder="Ex: Abel" autocomplete="off">
+                
+                <label>PIN (4 Números):</label>
+                <input type="tel" id="input-setup-pin" maxlength="4" placeholder="••••" class="pin-input">
+                
+                <label>Escolha seu Avatar:</label>
+                <div class="avatar-selector">
+                    <label>
+                        <input type="radio" name="avatar" value="male" checked>
+                        <span class="avatar-icon">🧔🏻‍♂️</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="avatar" value="female">
+                        <span class="avatar-icon">👩🏻</span>
+                    </label>
+                </div>
+
+                <button onclick="saveSetup()" id="btn-login">Entrar / Criar ➤</button>
+            </div>
+        </div>
+    </div>
+
+    <header id="main-header">
+        <div id="user-display">
+            </div>
+        <button onclick="logoutProfile()" class="logout-btn">Sair ↻</button>
+    </header>
+
+    <div class="container">
+        
+        <div class="filters">
+            <input type="month" id="monthFilter" onchange="updateDashboard()">
+        </div>
+
+        <div id="dashboard">
+            <div class="card card-prev">
+                <div class="card-title">Mês Passado</div>
+                <div id="display-previous" class="card-value">0,00</div>
+            </div>
+
+            <div class="card card-savings">
+                <div class="card-title">Guardado 🐷</div>
+                <div id="display-savings" class="card-value">0,00</div>
+            </div>
+
+            <div class="card card-income">
+                <div class="card-title">Entradas</div>
+                <div id="display-income" class="card-value">0,00</div>
+            </div>
+
+            <div class="card card-expense">
+                <div class="card-title">Gastos</div>
+                <div id="display-expense" class="card-value">0,00</div>
+            </div>
+
+            <div class="card card-balance">
+                <div class="card-title">Saldo Disponível</div>
+                <div id="display-balance" class="card-value-big">0,00</div>
+            </div>
+        </div>
+
+        <form id="transaction-form">
+            <div class="input-group">
+                <label>Descrição</label>
+                <input type="text" id="description" placeholder="O que comprou?" required>
+            </div>
+            
+            <div class="input-group">
+                <label>Valor</label>
+                <input type="number" id="amount" step="0.01" placeholder="0.00" required>
+            </div>
+
+            <div class="input-group">
+                <label>Tipo</label>
+                <div class="type-selector">
+                    <label><input type="radio" name="type" value="expense" checked> Saída 💸</label>
+                    <label><input type="radio" name="type" value="income"> Entrada 💰</label>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Categoria</label>
+                <select id="category" required>
+                    <option value="Alimentação">Alimentação 🍔</option>
+                    <option value="Transporte">Transporte 🚗</option>
+                    <option value="Habitação">Habitação 🏠</option>
+                    <option value="Saúde/Beleza">Saúde/Beleza 💅</option>
+                    <option value="Lazer">Lazer 🎉</option>
+                    <option value="Educação">Educação 📚</option>
+                    <option value="Poupança">Poupança/Investimento 🐷</option>
+                    <option value="Outros">Outros 📦</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Data</label>
+                <input type="date" id="date" required>
+            </div>
+
+            <button type="submit" id="add-btn">Adicionar Movimento</button>
+        </form>
+
+        <h3>Histórico</h3>
+        <ul id="transactions" class="transaction-list"></ul>
+        
+        <div style="text-align: center; margin-top: 40px; margin-bottom: 20px;">
+            <button onclick="forceUpdate()" style="background:none; color: #95a5a6; border: 1px solid #bdc3c7; padding: 8px; border-radius: 5px; font-size: 0.8rem;">
+                ⚠️ Resetar App (Correção de erros)
+            </button>
+        </div>
+    </div>
+
+    <button onclick="toggleChat()" id="chat-btn">🤖</button>
+    <div id="chatWindow">
+        <div class="chat-header">
+            Assistente <span onclick="toggleChat()" style="float: right; cursor: pointer;">✖</span>
+        </div>
+        <div id="chatMessages">
+            <div class="msg-bot">Olá! Posso ajudar a categorizar.</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Digite aqui...">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
+    <script src="script.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+            .then(() => console.log('Service Worker Registado!'))
+            .catch((err) => console.log('Erro no SW:', err));
+        }
+    </script>
+</body>
+</html>
