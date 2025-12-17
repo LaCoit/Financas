@@ -172,26 +172,54 @@ function updateDashboard() {
     allTransactions.forEach(t => {
         const d = t.date.substring(0, 7);
         
+        // 1. CÁLCULO DO SALDO ANTERIOR (Acumulado dos meses passados)
         if (d < month) {
-            // Saldo Anterior
-            if (t.type === 'income') ant += t.amount;
+            if (t.category === 'Poupança') {
+                // Se for poupança no passado, afeta o saldo acumulado?
+                // Sim, o dinheiro saiu da conta corrente.
+                if (t.type === 'expense') ant -= t.amount; // Guardou (saiu do disponivel)
+                else ant += t.amount; // Resgatou (voltou pro disponivel)
+            }
+            else if (t.type === 'income') ant += t.amount;
             else ant -= t.amount;
-        } else if (d === month) {
-            // Mês Atual
-            if (t.type === 'income') rec += t.amount;
-            else if (t.category === 'Poupança') poup += t.amount;
-            else desp += t.amount;
+        } 
+        
+        // 2. CÁLCULO DO MÊS ATUAL
+        else if (d === month) {
+            
+            // LÓGICA ESPECIAL DA POUPANÇA
+            if (t.category === 'Poupança') {
+                if (t.type === 'expense') {
+                    // TIPO SAÍDA = GUARDAR DINHEIRO
+                    poup += t.amount; 
+                } else {
+                    // TIPO ENTRADA = RESGATAR/USAR DINHEIRO
+                    poup -= t.amount; 
+                }
+            }
+            // LÓGICA COMUM (Outras categorias)
+            else if (t.type === 'income') {
+                rec += t.amount;
+            }
+            else {
+                desp += t.amount;
+            }
         }
     });
 
+    // FÓRMULA FINAL:
+    // Saldo = Anterior + Receitas - Despesas - (O que está no cofre da Poupança)
+    // Se 'poup' diminuir (resgate), o Saldo aumenta automaticamente.
     const saldo = ant + rec - desp - poup;
     
     document.getElementById('display-previous').innerText = fmt(ant);
-    document.getElementById('display-savings').innerText = fmt(poup);
+    document.getElementById('display-savings').innerText = fmt(poup); // Mostra quanto sobrou no cofre este mês
     document.getElementById('display-income').innerText = fmt(rec);
     document.getElementById('display-expense').innerText = fmt(desp);
-    document.getElementById('display-balance').innerText = fmt(saldo);
-    document.getElementById('display-balance').style.color = saldo >= 0 ? '#2c3e50' : '#c0392b';
+    
+    const elBal = document.getElementById('display-balance');
+    elBal.innerText = fmt(saldo);
+    elBal.style.color = saldo >= 0 ? '#2c3e50' : '#c0392b';
 }
 
 function renderList() {
@@ -255,3 +283,4 @@ function forceUpdate() {
     }
 
 }
+
