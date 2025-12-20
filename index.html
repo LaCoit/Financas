@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minhas Finanças 🇲🇦</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/120/wallet.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body>
+
+    <div id="setup-screen" style="display:none;">
+        <div class="setup-box">
+            <h1>Bem-vindo! 🇲🇦</h1>
+            <p>Crie o seu perfil seguro.</p>
+            
+            <input type="text" id="input-setup-name" placeholder="Seu Nome (Sem acentos)" maxlength="15">
+            <input type="tel" id="input-setup-pin" placeholder="PIN Secreto (4 dígitos)" maxlength="4">
+            
+            <div class="avatar-select">
+                <label>
+                    <input type="radio" name="avatar" value="male" checked>
+                    <div class="avatar-option">🧔🏻‍♂️</div>
+                </label>
+                <label>
+                    <input type="radio" name="avatar" value="female">
+                    <div class="avatar-option">👩🏻</div>
+                </label>
+            </div>
+            
+            <button class="btn-primary" onclick="saveSetup()">Entrar</button>
+            <p style="font-size:0.8rem; color:#777; margin-top:15px">Seus dados ficam salvos na nuvem ☁️</p>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-top">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span id="user-emoji" style="font-size:1.5rem;">👤</span>
+                <span style="font-weight:bold; color:white;">Minhas Finanças</span>
+            </div>
+            <div style="display:flex; gap:15px;">
+                <button class="btn-icon" onclick="toggleHelp()">❓</button>
+                <button class="btn-icon" onclick="logoutProfile()">🚪</button>
+            </div>
+        </div>
+
+        <div class="header-controls">
+            <input type="month" id="monthFilter" onchange="updateDashboard()">
+            <button class="btn-icon" style="font-size: 0.9rem; width: auto; padding: 0 10px;" onclick="toggleGoalsModal()">Metas</button>
+            <button id="edit-btn" class="btn-icon" style="background:white; color:black; width:35px; height:35px; border-radius:50%;" onclick="toggleEditMode()">✏️</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="view-dashboard" class="view active">
+            
+            <div class="cards-container">
+                <div class="card card-balance">
+                    <small>Saldo Atual</small>
+                    <h2 id="display-balance">---</h2>
+                </div>
+                <div class="card card-savings">
+                    <small>No Cofre 🐷</small>
+                    <h3 id="display-savings">---</h3>
+                </div>
+            </div>
+
+            <div class="mini-cards">
+                <div class="mini-card income">
+                    <span>Entrou ⬇️</span>
+                    <strong id="display-income">---</strong>
+                </div>
+                <div class="mini-card expense">
+                    <span>Saiu ⬆️</span>
+                    <strong id="display-expense">---</strong>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div id="expenseChart" class="pie-chart"></div>
+                <div class="hole"></div> 
+            </div>
+            <div id="chart-legend" class="legend-grid"></div>
+
+            <hr>
+
+            <div class="filter-bar">
+    
+    <div style="display:flex; align-items:center; gap:10px;">
+        <h3 style="margin:0;">Histórico</h3> 
+        <select id="filter-category" onchange="updateDashboard()" class="btn-select-mini">
+            <option value="">Todas</option>
+        </select>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+        
+        <label class="group-toggle-label">
+            <input type="checkbox" id="group-toggle" onchange="updateDashboard()"> 
+            <span>Agrupar</span> </label>
+
+        <div id="total-month" style="font-weight:bold; color:var(--primary); white-space:nowrap;">
+            0 dh
+        </div>
+    </div>
+
+</div>
+
+            <div id="maintenance-tools" style="display:none; justify-content:center; gap:10px; margin-bottom:10px; padding:10px; background:#f9f9f9; border-radius:8px;">
+                <button class="btn-icon-small" style="color:blue; border:1px solid blue;" onclick="downloadBackup()" title="Baixar Backup">💾 Backup</button>
+                <button class="btn-icon-small" style="color:purple; border:1px solid purple;" onclick="adjustBalance()" title="Ajustar Saldo Real">⚖️ Ajustar</button>
+                <button class="btn-icon-small" style="color:orange; border:1px solid orange;" onclick="clearAppCache()" title="Limpar Cache">🧹 Cache</button>
+            </div>
+
+            <ul id="transactions">
+                </ul>
+            <div style="height:80px;"></div> </div>
+
+        <div id="view-add" class="view">
+            <h2>Nova Movimentação</h2>
+            <form id="transaction-form">
+                
+                <div class="type-selector">
+                    <label>
+                        <input type="radio" name="type" value="expense" checked onchange="toggleFormFields()">
+                        <span class="type-btn expense-btn">Despesa 💸</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="type" value="income" onchange="toggleFormFields()">
+                        <span class="type-btn income-btn">Receita 💰</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <div style="display:flex; gap:5px;">
+                        <select id="category" style="flex:1;"></select>
+                        <button type="button" onclick="manageCategories()" style="width:40px; font-size:1.2rem;">⚙️</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição (Item)</label>
+                    <input type="text" id="description" list="history-list" placeholder="Ex: Arroz, Gasolina..." required>
+    
+                    <datalist id="history-list"></datalist>
+                </div>
+
+                <div id="expense-inputs" style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label>Qtd</label>
+                        <input type="number" id="qty" value="1" min="1" oninput="calculateTotal()">
+                    </div>
+                    <div style="flex:2;">
+                        <label>Preço Unit.</label>
+                        <input type="number" id="unit-price" step="0.01" placeholder="0.00" oninput="calculateTotal()">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Total (dh)</label>
+                    <input type="number" id="amount" step="0.01" placeholder="0.00" required style="font-size:1.5rem; font-weight:bold; color:#2c3e50;">
+                </div>
+
+                <button type="submit" class="btn-primary">Salvar ✅</button>
+            </form>
+        </div>
+
+        <div id="view-goals" class="view">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>Metas Mensais 🎯</h2>
+                <button class="btn-small" onclick="addNewGoal()">+ Meta</button>
+            </div>
+            <p style="font-size:0.9rem; color:#666;">Defina limites para não gastar demais.</p>
+            <div id="goals-list"></div>
+        </div>
+
+    </main>
+
+    <nav class="bottom-nav">
+        <button id="nav-dashboard" class="nav-btn active" onclick="switchView('dashboard')">
+            <span style="font-size:1.4rem;">📊</span>
+            <span>Resumo</span>
+        </button>
+
+        <div class="nav-center">
+            <button class="nav-btn-big" onclick="switchView('add')">+</button>
+        </div>
+
+        <button id="nav-goals" class="nav-btn" onclick="switchView('goals')">
+            <span style="font-size:1.4rem;">🎯</span>
+            <span>Metas</span>
+        </button>
+    </nav>
+
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="toggleHelp()">&times;</span>
+            <h2 style="text-align:center; margin-bottom: 20px;">Como usar o APP</h2>
+            
+            <div class="help-container">
+                
+                <div class="help-box">
+                    <h3>📝 Registar Gastos</h3>
+                    <p>Toque no botão <strong>(+)</strong> gigante. Escolha se entrou dinheiro (Receita) ou se saiu (Despesa).</p>
+                </div>
+
+                <div class="help-box" style="border-left-color: #f39c12;">
+                    <h3>🐷 Cofrinho / Poupança</h3>
+                    <p>Para guardar dinheiro:</p>
+                    <ol style="padding-left:20px; margin-bottom:5px">
+                        <li>Toque no botão <strong>(+)</strong>.</li>
+                        <li>Escolha <strong>Despesa</strong>.</li>
+                        <li>Selecione a categoria <strong>Poupança (Guardar) 🐷</strong>.</li>
+                    </ol>
+                    <p><em>Para resgatar, crie uma Receita em "Poupança (Resgate)".</em></p>
+                </div>
+
+                <div class="help-box"> 
+                    <h3>🏁 Saldo Inicial / Sobras</h3>
+                    <p>Vá em <strong>(+) Receita</strong> e escolha a categoria <strong>"Saldo Inicial 🏁"</strong>.</p>
+                    <p>Coloque o valor que sobrou do mês passado.</p>
+                </div>
+
+                <div class="help-box" style="border-left-color: #f39c12;">
+                    <h3>🗑️ Apagar Itens</h3>
+                    <p>Toque no ícone <strong>Lápis (✏️)</strong> no topo. Aparecerão lixeiras ao lado de cada item.</p>
+                </div>
+
+                <div class="help-box">
+                    <h3>⚖️ Ajuste de Saldo</h3>
+                    <p>Se o valor da App estiver errado:</p>
+                    <ol style="padding-left:20px;">
+                        <li>Clique no <strong>Lápis (✏️)</strong>.</li>
+                        <li>Clique no botão roxo <strong>(⚖️)</strong>.</li>
+                        <li>Digite o valor real que tem na carteira.</li>
+                    </ol>
+                </div>
+
+                <div class="help-box" style="border-left-color: #f39c12;">
+                    <h3>💾 Backup</h3>
+                    <p>Seus dados ficam na nuvem pelo Nome/PIN.</p>
+                    <p>Use o botão de <strong>Disquete (💾)</strong> no menu Lápis para baixar uma cópia extra.</p>
+                </div>
+
+            </div>
+
+            <div style="text-align:center; margin-top:20px;">
+                <button class="btn-primary" onclick="toggleHelp()">Entendi</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+
+    <div id="goals-modal" class="modal-overlay" style="display: none;" onclick="if(event.target === this) toggleGoalsModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Metas Mensais</h3> <span class="close-btn" onclick="toggleGoalsModal()">×</span>
+        </div>
+        
+        <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">
+            Acompanhe os seus limites de gastos.
+        </p>
+
+        <div id="goals-list-modal"></div>
+
+        <button class="btn-primary" style="width:100%; margin-top:15px;" onclick="toggleGoalsModal()">Fechar</button>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,392 @@
+/* --- RESET E VARIÁVEIS --- */
+:root {
+    --primary: #8e44ad;
+    --secondary: #2c3e50;
+    --bg: #f4f6f8;
+    --danger: #e74c3c;
+    --success: #27ae60;
+    --text: #333;
+    --shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+body { background: var(--bg); color: var(--text); padding-bottom: 80px; -webkit-tap-highlight-color: transparent; }
+
+/* --- HEADER --- */
+header {
+    background: var(--secondary);
+    color: white;
+    padding: 15px 20px 20px;
+    border-radius: 0 0 25px 25px;
+    box-shadow: var(--shadow);
+    position: relative;
+    z-index: 10;
+}
+
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+
+.header-controls { display: flex; gap: 10px; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.15); padding: 8px; border-radius: 12px; }
+
+input[type="month"] {
+    background: transparent; border: none; color: white; font-weight: bold; font-size: 1rem;
+    cursor: pointer;
+}
+/* Muda cor do ícone de calendário para branco */
+input[type="month"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+/* --- BOTÕES GERAIS (Interatividade Melhorada) --- */
+button { cursor: pointer; transition: all 0.2s ease; user-select: none; }
+
+button:active { transform: scale(0.95); } /* Efeito de clique */
+
+/* Efeito Hover (Só funciona em PC) */
+@media (hover: hover) {
+    button:hover { filter: brightness(1.1); transform: translateY(-2px); }
+    .btn-icon:hover { background: rgba(255,255,255,0.2); }
+}
+
+.btn-icon { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 5px; border-radius: 50%; color: white; }
+.btn-primary { background: var(--secondary); color: white; border: none; padding: 15px; width: 100%; border-radius: 12px; font-size: 1.1rem; font-weight: bold; margin-top: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.btn-small { background: var(--primary); color: white; border: none; padding: 5px 12px; border-radius: 15px; font-size: 0.8rem; }
+.btn-icon-small { background: white; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 0.9rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: 0.2s; }
+.btn-icon-small:hover { transform: scale(1.05); }
+
+/* --- LAYOUT DE VISTAS --- */
+main { padding: 20px; max-width: 600px; margin: 0 auto; }
+.view { display: none; animation: fadeIn 0.3s ease; }
+.view.active { display: block; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- DASHBOARD CARDS --- */
+.cards-container { display: flex; gap: 15px; margin-top: -40px; margin-bottom: 20px; }
+.card { background: white; padding: 15px; border-radius: 16px; flex: 1; box-shadow: var(--shadow); text-align: center; position: relative; overflow: hidden; }
+.card small { color: #777; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+.card h2, .card h3 { margin-top: 5px; color: var(--secondary); }
+.card-savings { border-bottom: 4px solid var(--primary); }
+
+.mini-cards { display: flex; gap: 10px; margin-bottom: 20px; }
+.mini-card { flex: 1; background: white; padding: 10px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); font-size: 0.9rem; }
+.mini-card span { display: block; font-size: 0.75rem; color: #888; margin-bottom: 3px; }
+.amount-income { color: var(--success); font-weight: bold; }
+.amount-expense { color: var(--danger); font-weight: bold; }
+
+/* --- GRÁFICO ANIMADO --- */
+.chart-container { position: relative; width: 220px; height: 220px; margin: 0 auto 20px; }
+.pie-chart { width: 100%; height: 100%; border-radius: 50%; background: #eee; transition: background 1s ease; box-shadow: inset 0 0 20px rgba(0,0,0,0.05); }
+.hole { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 160px; height: 160px; background: var(--bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+
+.chart-info h5 { color: #999; margin-bottom: 5px; }
+.chart-label { font-size: 0.85rem; font-weight: bold; color: #555; text-transform: uppercase; margin-bottom: 4px; }
+.chart-value { font-size: 1.3rem; font-weight: bold; color: var(--secondary); }
+.chart-percent { font-size: 0.75rem; margin-top: 4px; padding: 2px 6px; border-radius: 4px; display: inline-block; font-weight: bold; }
+
+.status-good { color: var(--success); background: #dff9fb; }
+.status-warning { color: #f39c12; background: #fef5d9; }
+.status-danger { color: var(--danger); background: #fadbd8; }
+
+.legend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+.legend-item { font-size: 0.75rem; display: flex; align-items: center; gap: 5px; color: #666; background: white; padding: 5px; border-radius: 5px; justify-content: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* --- LISTA DE TRANSAÇÕES --- */
+.list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+#transactions { list-style: none; padding-bottom: 20px; }
+.transaction-item { background: white; padding: 12px 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03); transition: transform 0.2s; }
+.transaction-item:hover { transform: scale(1.01); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+
+.item-info strong { display: block; color: var(--text); }
+.item-info small { color: #999; font-size: 0.8rem; }
+
+/* Botão de apagar (escondido por padrão) */
+.delete-btn { display: none; margin-left: 10px; color: var(--danger); cursor: pointer; padding: 5px; font-size: 1.2rem; }
+.show-delete .delete-btn { display: block; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+@keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* --- SELETOR DE TIPO (RECEITA VS DESPESA) - MELHORADO --- */
+.type-selector { display: flex; gap: 15px; margin-bottom: 20px; }
+.type-selector label { flex: 1; cursor: pointer; position: relative; }
+.type-selector input { display: none; } /* Esconde o botão de rádio original */
+
+.type-btn {
+    display: flex; align-items: center; justify-content: center;
+    padding: 15px; border-radius: 12px;
+    background: #e0e0e0; color: #777; /* Estado Inativo */
+    font-weight: bold; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Quando Despesa está Selecionada */
+input[value="expense"]:checked + .expense-btn {
+    background: var(--danger); color: white;
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+    transform: translateY(-3px);
+}
+
+/* Quando Receita está Selecionada */
+input[value="income"]:checked + .income-btn {
+    background: var(--success); color: white;
+    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+    transform: translateY(-3px);
+}
+
+/* Quando NÃO está selecionado (efeito visual) */
+input:not(:checked) + .type-btn { opacity: 0.6; transform: scale(0.95); }
+
+/* --- FORMULÁRIO --- */
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; color: #666; font-size: 0.9rem; font-weight: 500; }
+input, select { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 1rem; background: #fff; transition: 0.3s; outline: none; }
+input:focus, select:focus { border-color: var(--primary); background: white; }
+#amount { text-align: center; letter-spacing: 1px; }
+
+/* --- MENU INFERIOR (NAVEGAÇÃO) - MELHORADO --- */
+.bottom-nav { 
+    position: fixed; bottom: 0; left: 0; width: 100%; 
+    background: white; padding: 10px 30px; 
+    display: flex; justify-content: space-between; align-items: center; 
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.05); z-index: 100; 
+    border-radius: 20px 20px 0 0;
+}
+
+.nav-btn { 
+    background: none; border: none; color: #ccc; /* Cor Inativa */
+    display: flex; flex-direction: column; align-items: center; 
+    gap: 3px; font-size: 0.7rem; font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+/* Estado Ativo do Menu */
+.nav-btn.active { 
+    color: var(--secondary); /* Cor Ativa */
+    transform: translateY(-3px); 
+    font-weight: bold;
+}
+.nav-btn.active span:first-child { transform: scale(1.2); }
+
+/* Botão Central (+) */
+.nav-center { position: relative; top: -25px; }
+.nav-btn-big { 
+    width: 60px; height: 60px; border-radius: 50%; 
+    background: var(--secondary); color: white; border: none; 
+    font-size: 2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.nav-btn-big:hover { transform: scale(1.1) rotate(90deg); }
+.nav-btn-big:active { transform: scale(0.9); }
+
+/* --- SETUP & MODAL --- */
+#setup-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 200; display: flex; align-items: center; justify-content: center; }
+.setup-box { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 85%; max-width: 350px; box-shadow: var(--shadow); }
+.avatar-select { display: flex; justify-content: center; gap: 20px; margin: 20px 0; }
+.avatar-select input { display: none; }
+.avatar-option { font-size: 3rem; opacity: 0.3; transition: 0.3s; cursor: pointer; filter: grayscale(1); }
+.avatar-select input:checked + .avatar-option { opacity: 1; transform: scale(1.2); filter: grayscale(0); }
+
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; animation: fadeIn 0.3s; }
+.modal-content { background: white; margin: 15% auto; padding: 25px; width: 85%; max-width: 400px; border-radius: 15px; position: relative; max-height: 80vh; overflow-y: auto; }
+.close-btn { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; color: #999; }
+.goal-item { padding: 10px; background: #fafafa; border-bottom: 1px solid #eee; margin-bottom: 5px; border-radius: 5px; }
+
+/* ---------------------------
+   AJUSTES PARA DESKTOP (FIXED) 
+   ---------------------------
+*/
+@media(min-width: 768px) {
+    /* 1. Removemos o flex do body para que os elementos fiquem um em cima do outro */
+    body { 
+        background: #eef2f5; 
+        display: block; /* Mudei de flex para block */
+    }
+
+    /* 2. Centralizamos o Header limitando a largura */
+    header {
+        max-width: 600px;
+        margin: 0 auto; /* Centraliza horizontalmente */
+        border-radius: 0 0 25px 25px; 
+    }
+
+    /* 3. Centralizamos o Main da mesma forma */
+    main { 
+        max-width: 600px;
+        margin: 20px auto 100px auto; /* Margem em baixo extra para não bater no menu */
+        box-shadow: 0 0 30px rgba(0,0,0,0.05); 
+        border-radius: 20px; 
+        background: white; 
+        min-height: 80vh; 
+    }
+
+    /* 4. O menu de navegação já estava centralizado, mas garantimos que continue */
+    .bottom-nav { 
+        max-width: 600px; 
+        left: 50%; 
+        transform: translateX(-50%); 
+        border-radius: 20px 20px 0 0; 
+        bottom: 0; /* Garante que fica colado em baixo */
+        width: 100%;
+    }
+}
+
+/* --- ESTILO PARA OS CARTÕES DE AJUDA --- */
+.help-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Espaço entre os cartões */
+    margin-top: 10px;
+}
+
+.help-box {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 5px solid var(--primary); /* Barra colorida lateral */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.help-box h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    color: var(--secondary);
+}
+
+.help-box p, .help-box li {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 5px;
+}
+
+/* --- SUGESTÕES INTELIGENTES (CHIPS) --- */
+.suggestions-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 15px; /* Espaço antes do próximo campo */
+    overflow-x: auto; /* Permite deslizar para o lado se houver muitas */
+    white-space: nowrap;
+    padding-bottom: 5px;
+}
+
+/* Esconde a barra de rolagem para ficar mais limpo */
+.suggestions-container::-webkit-scrollbar { display: none; }
+
+.suggestion-chip {
+    background: #e0e0e0;
+    color: #333;
+    padding: 6px 14px;
+    border-radius: 20px; /* Bordas redondas */
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    transition: all 0.2s ease;
+    flex-shrink: 0; /* Garante que o botão não fica esmagado */
+}
+
+.suggestion-chip:hover {
+    background: var(--primary); /* Usa a cor roxa do seu tema */
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-2px); /* Efeito de levantar ligeiramente */
+}
+
+/* --- BARRA DE FILTRO E HISTÓRICO --- */
+.filter-bar {
+    display: flex;
+    justify-content: space-between; /* Empurra o Total para a ponta direita */
+    align-items: center;
+    margin: 15px 0;
+    padding: 10px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Agrupa Título, Select e Botão à esquerda */
+.filter-left {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Espaço entre os itens */
+    flex-wrap: wrap; /* Se o ecrã for muito pequeno, ajusta-se */
+}
+
+.btn-select-mini {
+    padding: 5px 20px 5px 10px; /* Espaço extra à direita para a seta */
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    font-size: 0.85rem;
+    color: #333;
+    outline: none;
+    cursor: pointer;
+}
+
+.group-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    background: #f1f1f1;
+    padding: 5px 10px;
+    border-radius: 8px;
+    margin: 0; /* Remove margens padrão */
+}
+
+/* --- ESTILO DO POP-UP (MODAL) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); /* Fundo escuro */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px); /* Efeito de desfoque */
+}
+
+.modal-content {
+    background: white;
+    width: 90%;
+    max-width: 400px;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    animation: slideUp 0.3s ease;
+    max-height: 80vh; /* Se for muito grande, cria scroll */
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.close-btn {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+}
+
+/* Animação suave */
+@keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Estilo das Barras dentro do Modal */
+.goal-item { margin-bottom: 15px; }
+.goal-info { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 5px; }
+.track { background: #eee; height: 10px; border-radius: 5px; width: 100%; overflow: hidden; }
+.fill { height: 100%; border-radius: 5px; transition: width 0.5s; }
+
+/* Cores */
+.bg-ok { background: #27ae60; }
+.bg-warn { background: #f1c40f; }
+.bg-danger { background: #e74c3c; }
