@@ -981,3 +981,17 @@ function loadCategoriesFromFirebase() {
         }
     });
 }
+
+// --- REGISTO DO SERVICE WORKER ---
+// Este código deve ficar no fim do script.js para ativar o modo App
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => {
+                console.log('SW registado com sucesso para a v14!', reg.scope);
+            })
+            .catch(err => {
+                console.log('Erro ao registar o SW:', err);
+            });
+    });
+}
